@@ -1,0 +1,38 @@
+{
+  "name": "my-first-cap",
+  "version": "1.0.0",
+  "dependencies": {
+    "@cap-js/hana": "^2",
+    "@sap/approuter": "^22.0.1",
+    "@sap/cds": "^9",
+    "@sap/xssec": "^4.13.0"
+  },
+  "devDependencies": {
+    "@cap-js/sqlite": "^2.4",
+    "cds-plugin-ui5": "^0.13.0"
+  },
+  "scripts": {
+    "start": "cds-serve",
+    "watch-tasks": "cds watch --open my.first.tasks/index.html?sap-ui-xx-viewCache=false --livereload false"
+  },
+  "private": true,
+  "workspaces": [
+    "app/*"
+  ],
+  "sapux": [
+    "app/tasks"
+  ],
+  "cds": {
+    "requires": {
+      "db": {
+        "kind": "hana",
+        "[hybrid]": {
+          "kind": "hana"
+        }
+      },
+      "[production]": {
+        "auth": "xsuaa"
+      }
+    }
+  }
+}

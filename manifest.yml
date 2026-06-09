@@ -1,0 +1,22 @@
+applications:
+  - name: my-first-cap
+    path: gen/srv
+    buildpacks:
+      - nodejs_buildpack
+    memory: 256M
+    instances: 1
+    services:
+      - my-first-cap-db
+      - my-first-cap-xsuaa
+
+  - name: my-first-cap-approuter
+    path: approuter
+    buildpacks:
+      - nodejs_buildpack
+    memory: 128M
+    instances: 1
+    services:
+      - my-first-cap-xsuaa
+    env:
+      destinations: >
+        [{"name":"cap-backend","url":"https://my-first-cap.cfapps.us10-001.hana.ondemand.com","forwardAuthToken":true}]

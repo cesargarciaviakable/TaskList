@@ -1,0 +1,34 @@
+{
+  "xsappname": "my-first-cap",
+  "tenant-mode": "dedicated",
+  "oauth2-configuration": {
+    "redirect-uris": ["https://my-first-cap-approuter.cfapps.us10-001.hana.ondemand.com/**"]
+  },
+  "scopes": [
+    {
+      "name": "$XSAPPNAME.Tasks.Read",
+      "description": "Read tasks"
+    },
+    {
+      "name": "$XSAPPNAME.Tasks.Write",
+      "description": "Create and update tasks" }
+    ],
+    "attributes": [],
+    "role-templates": [
+      {
+        "name": "Viewer",
+        "description": "Can read tasks",
+        "scope-references": [
+          "$XSAPPNAME.Tasks.Read"
+        ]
+      },
+      {
+        "name": "Editor",
+        "description": "Can read and write tasks",
+        "scope-references": [
+          "$XSAPPNAME.Tasks.Read",
+          "$XSAPPNAME.Tasks.Write"
+        ]
+      }
+    ]
+  }
