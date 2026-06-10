@@ -31,9 +31,15 @@
   "cds": {
     "requires": {
       "db": {
-        "kind": "hana",
-        "[hybrid]": {
-          "kind": "hana"
+        "[hybrid]": { "kind": "hana" },
+        "[production]": { "kind": "hana" }
+      },
+      "[development]": {
+        "auth": {
+          "kind": "mocked",
+          "users": {
+            "alice": { "roles": ["Tasks.Read", "Tasks.Write"] }
+          }
         }
       },
       "[production]": {

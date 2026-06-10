@@ -1,6 +1,9 @@
 using TaskService as service from '../../srv/task-service';
 
 annotate service.Tasks with @(
+  Capabilities.InsertRestrictions: { Insertable: true },
+  Capabilities.UpdateRestrictions: { Updatable: true },
+  Capabilities.DeleteRestrictions: { Deletable: true },
   UI.HeaderInfo                : {
     TypeName      : 'Task',
     TypeNamePlural: 'Tasks',
