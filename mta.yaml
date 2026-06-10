@@ -65,6 +65,36 @@ modules:
       forwardAuthToken: true
   - name: my-first-cap-xsuaa
   - name: my-first-cap-repo-runtime
+- name: my-first-cap-destination-content
+  type: com.sap.application.content
+  requires:
+  - name: my-first-cap-destination-service
+    parameters:
+      content-target: true
+  - name: my-first-cap-repo-host
+    parameters:
+      service-key:
+        name: my-first-cap-repo-host-key
+  - name: my-first-cap-xsuaa
+    parameters:
+      service-key:
+        name: my-first-cap-xsuaa-key
+  parameters:
+    content:
+      instance:
+        destinations:
+        - Name: my_first_cap_repo_host
+          ServiceInstanceName: my-first-cap-html5-service
+          ServiceKeyName: my-first-cap-repo-host-key
+          sap.cloud.service: my.first.cap
+        - Name: my_first_cap_uaa
+          Authentication: OAuth2UserTokenExchange
+          ServiceInstanceName: my-first-cap-xsuaa
+          ServiceKeyName: my-first-cap-xsuaa-key
+          sap.cloud.service: my.first.cap
+        existing_destinations_policy: ignore
+  build-parameters:
+    no-source: true
 resources:
 - name: my-first-cap-xsuaa
   type: org.cloudfoundry.existing-service
@@ -83,14 +113,23 @@ resources:
     service-plan: app-host
 - name: my-first-cap-destination-service
   type: org.cloudfoundry.managed-service
+  requires:
+  - name: srv-api
   parameters:
     config:
       HTML5Runtime_enabled: true
       init_data:
         instance:
           destinations:
-          - Authentication: NoAuthentication
-            Name: ui5
+          - Name: srv-api
+            URL: ~{srv-api/srv-url}
+            Authentication: NoAuthentication
+            Type: HTTP
+            ProxyType: Internet
+            HTML5.DynamicDestination: true
+            HTML5.ForwardAuthToken: true
+          - Name: ui5
+            Authentication: NoAuthentication
             ProxyType: Internet
             Type: HTTP
             URL: https://ui5.sap.com
