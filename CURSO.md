@@ -730,3 +730,95 @@ Agregar este script en `app/tasks/webapp/index.html` ANTES del bootstrap de UI5:
 ```
 
 El regex detecta el patrón FLP (`#SemanticObject-action`) y lo elimina antes de que UI5 procese el hash, dejando la URL limpia para el router de Fiori Elements.
+
+---
+
+## 28. CRUD — Botones Create/Edit en Fiori Elements
+
+### Contexto
+
+Con el servicio básico (`entity Tasks as projection on mf.Tasks`) la List Report cargaba datos pero no mostraba el botón **Create** ni el botón **Edit** en el Object Page.
+
+### Fix 1 — `package.json`: `kind: "hana"` debe estar solo en los profiles correctos
+
+Si `kind: "hana"` está a nivel global en la config CDS, `cds watch` falla con `"Database kind hana configured but no HDI container"` porque busca un binding HANA en el profile `development` donde no existe.
+
+**Correcto** — solo en los profiles que usan HANA:
+
+```json
+"cds": {
+  "requires": {
+    "db": {
+      "[hybrid]":     { "kind": "hana" },
+      "[production]": { "kind": "hana" }
+    },
+    "[development]": {
+      "auth": {
+        "kind": "mocked",
+        "users": {
+          "alice": { "roles": ["Tasks.Read", "Tasks.Write"] }
+        }
+      }
+    },
+    "[production]": {
+      "auth": "xsuaa"
+    }
+  }
+}
+```
+
+Con esto, `cds watch` (sin profile) usa SQLite en memoria + mock auth. `cds watch --profile hybrid` usa HANA + XSUAA.
+
+### Fix 2 — `srv/task-service.cds`: simplificar `@requires`
+
+La anotación `@restrict` con grants separados para READ y WRITE hace que CAP genere `InsertRestrictions.Insertable: false` automáticamente en el metadata, ocultando los botones de CRUD. Se simplificó a `@requires` solo en el servicio:
+
+```cds
+@requires: 'Tasks.Read'
+service TaskService {
+  @odata.draft.enabled
+  entity Tasks as projection on mf.Tasks;
+  @readonly entity Statuses as select from mf.Statuses;
+}
+```
+
+### Fix 3 — `app/tasks/annotations.cds`: capabilities explícitas
+
+sap.fe no infiere los botones CRUD desde el default OData (ausencia de restricción = insertable). Requiere anotaciones explícitas en el EntitySet.
+
+Agregar al inicio del bloque `annotate service.Tasks`:
+
+```cds
+annotate service.Tasks with @(
+  Capabilities.InsertRestrictions: { Insertable: true },
+  Capabilities.UpdateRestrictions: { Updatable: true },
+  Capabilities.DeleteRestrictions: { Deletable: true },
+  ...
+);
+```
+
+Verificar en `http://localhost:4004/odata/v4/task/$metadata` que aparezca:
+```xml
+<Annotations Target="TaskService.EntityContainer/Tasks">
+  <Annotation Term="Capabilities.InsertRestrictions">
+    <PropertyValue Property="Insertable" Bool="true"/>
+  </Annotation>
+  ...
+</Annotations>
+```
+
+### Fix 4 — `@odata.draft.enabled`: requerido para el ciclo de vida Edit
+
+Aunque las capabilities estuvieran correctas, el template `sap.fe.templates.ListReport` + `sap.fe.templates.ObjectPage` opera en modo display-only sin draft. El botón **Edit** en el Object Page y el flujo **Create → Save/Discard** requieren draft habilitado.
+
+```cds
+@odata.draft.enabled
+entity Tasks as projection on mf.Tasks;
+```
+
+CAP auto-genera las tablas de draft en HANA y expone las acciones OData `draftEdit` y `draftActivate`. sap.fe las detecta y habilita el ciclo de vida completo: Create, Edit, Save, Discard.
+
+**Gotchas:**
+- Sin `@odata.draft.enabled`, sap.fe carga la app en modo display-only aunque las capabilities digan `Insertable: true`
+- Draft funciona en `cds watch` (SQLite) y en producción (HANA) sin configuración adicional
+- Al cambiar `@odata.draft.enabled` en producción, el MTA deploy actualiza automáticamente las tablas del HDI container
