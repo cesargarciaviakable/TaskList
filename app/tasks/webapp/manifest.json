@@ -147,13 +147,17 @@
       }
     }
   },
+  "sap.cloud": {
+    "public": true,
+    "service": "my.first.cap"
+  },
   "sap.fiori": {
     "registrationIds": [],
     "archeType": "transactional"
   },
   "sap.fe": {
     "app": {
-      "enableLazyLoading": true
+      "enableLazyLoading": false
     }
   }
 }

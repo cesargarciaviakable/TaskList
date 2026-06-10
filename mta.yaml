@@ -1,0 +1,116 @@
+_schema-version: 3.3.0
+ID: my-first-cap
+description: A simple CAP project.
+version: 1.0.0
+modules:
+- name: my-first-cap-srv
+  type: nodejs
+  path: gen/srv
+  requires:
+  - name: my-first-cap-xsuaa
+  - name: my-first-cap-db
+  provides:
+  - name: srv-api
+    properties:
+      srv-url: ${default-url}
+  parameters:
+    buildpack: nodejs_buildpack
+    instances: 1
+  build-parameters:
+    builder: npm-ci
+- name: my-first-cap-db-deployer
+  type: hdb
+  path: gen/db
+  requires:
+  - name: my-first-cap-db
+  parameters:
+    buildpack: nodejs_buildpack
+- name: my-first-cap-app-content
+  type: com.sap.application.content
+  path: .
+  requires:
+  - name: my-first-cap-repo-host
+    parameters:
+      content-target: true
+  build-parameters:
+    build-result: resources
+    requires:
+    - artifacts:
+      - myfirsttasks.zip
+      name: myfirsttasks
+      target-path: resources/
+- name: myfirsttasks
+  type: html5
+  path: app/tasks
+  build-parameters:
+    build-result: dist
+    builder: custom
+    commands:
+    - npm install
+    - npm run build:cf
+    supported-platforms: []
+- name: my-first-cap-approuter
+  type: approuter.nodejs
+  path: approuter
+  parameters:
+    keep-existing-routes: true
+    disk-quota: 256M
+    memory: 256M
+  requires:
+  - name: srv-api
+    group: destinations
+    properties:
+      name: srv-api
+      url: ~{srv-url}
+      forwardAuthToken: true
+  - name: my-first-cap-xsuaa
+  - name: my-first-cap-repo-runtime
+resources:
+- name: my-first-cap-xsuaa
+  type: org.cloudfoundry.existing-service
+  parameters:
+    service-name: my-first-cap-xsuaa
+- name: my-first-cap-db
+  type: com.sap.xs.hdi-container
+  parameters:
+    service: hana
+    service-plan: hdi-shared
+- name: my-first-cap-repo-host
+  type: org.cloudfoundry.managed-service
+  parameters:
+    service: html5-apps-repo
+    service-name: my-first-cap-html5-service
+    service-plan: app-host
+- name: my-first-cap-destination-service
+  type: org.cloudfoundry.managed-service
+  parameters:
+    config:
+      HTML5Runtime_enabled: true
+      init_data:
+        instance:
+          destinations:
+          - Authentication: NoAuthentication
+            Name: ui5
+            ProxyType: Internet
+            Type: HTTP
+            URL: https://ui5.sap.com
+          existing_destinations_policy: update
+      version: 1.0.0
+    service: destination
+    service-name: my-first-cap-destination-service
+    service-plan: lite
+- name: my-first-cap-repo-runtime
+  type: org.cloudfoundry.managed-service
+  parameters:
+    service: html5-apps-repo
+    service-name: my-first-cap-html5-runtime
+    service-plan: app-runtime
+parameters:
+  deploy_mode: html5-repo
+  enable-parallel-deployments: true
+build-parameters:
+  before-all:
+  - builder: custom
+    commands:
+    - npm ci
+    - npx cds build --production

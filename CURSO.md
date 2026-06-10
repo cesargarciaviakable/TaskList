@@ -482,3 +482,251 @@ Contexto: El JWT de XSUAA contiene los scopes del usuario. Sin asignarlos, CAP d
 **Resultado final:** App Fiori Elements corriendo en BTP con autenticación XSUAA real, roles funcionando y datos desde HANA Cloud.
 
 URL pública: `https://my-first-cap-approuter.cfapps.us10-001.hana.ondemand.com`
+
+---
+
+## 21. Migración de `cf push` a MTA
+
+Contexto: Work Zone requiere que la UI esté en el **HTML5 Application Repository** (no en el approuter como `localDir`). Eso requiere migrar de `cf push` a `cf deploy` con un archivo `mta.yaml`.
+
+**Herramientas instaladas:**
+```bash
+npm install -g mbt          # MTA Build Tool
+npm install -g mta          # mta executable
+npm install -g yo@5.1.0     # Yeoman (requerido por fiori deploy-config)
+cf install-plugin multiapps # Plugin CF para cf deploy
+```
+
+**Generar `mta.yaml` base:**
+```bash
+cds add mta
+```
+
+**Generar configuración de deploy para la UI:**
+```bash
+cd app/tasks
+npm run deploy-config       # → npx -p @sap/ux-ui5-tooling fiori add deploy-config cf
+```
+Preguntas del wizard:
+- Destination name: `srv-api`
+- Add deploy configuration to MTA: `Yes`
+
+Esto genera:
+- `app/tasks/ui5-deploy.yaml` → configuración del build con `ui5-task-zipper`
+- `app/tasks/xs-app.json` → routing de la app dentro del HTML5 repo
+- Agrega `build:cf` script y `ui5-task-zipper` a `app/tasks/package.json`
+- Agrega módulos `myfirsttasks` y `my-first-cap-app-content` al `mta.yaml`
+
+**`app/tasks/package.json` scripts relevantes:**
+```json
+{
+  "scripts": {
+    "build:cf": "ui5 build preload --clean-dest --config ui5-deploy.yaml --include-task=generateCachebusterInfo"
+  }
+}
+```
+
+---
+
+## 22. MTA — Estructura final del `mta.yaml`
+
+El `mta.yaml` define todos los módulos (apps) y recursos (servicios) como una unidad desplegable.
+
+**Módulos:**
+- `my-first-cap-srv` → backend CAP (nodejs)
+- `my-first-cap-db-deployer` → deployer del schema HANA (hdb)
+- `my-first-cap-app-content` → sube el zip de la UI al HTML5 repo
+- `myfirsttasks` → construye el zip de la UI Fiori Elements
+- `my-first-cap-approuter` → Application Router (approuter.nodejs)
+
+**Recursos (servicios CF):**
+- `my-first-cap-xsuaa` → `org.cloudfoundry.existing-service` (apunta a `my-first-cap-xsuaa`)
+- `my-first-cap-db` → `com.sap.xs.hdi-container` (HDI Container HANA)
+- `my-first-cap-repo-host` → `html5-apps-repo` plan `app-host` (almacena la UI)
+- `my-first-cap-repo-runtime` → `html5-apps-repo` plan `app-runtime` (sirve la UI)
+- `my-first-cap-destination-service` → `destination` plan `lite`
+
+**Parámetros globales:**
+```yaml
+parameters:
+  deploy_mode: html5-repo
+  enable-parallel-deployments: true
+```
+
+**Gotchas:**
+- El nombre del resource en `requires:` debe coincidir exactamente con el `name:` del resource. Si no coincide, `mbt build` falla con "property set required... is not defined"
+- Los servicios `existing-service` no se crean — apuntan a servicios ya existentes. Si se usó `managed-service` antes, el MTA intenta detach del servicio viejo y falla con 404. Es un error de metadata no crítico: las apps siguen corriendo
+- Si el HDI container queda en estado corrupto (múltiples bind/unbind fallidos): borrar el servicio manualmente con `cf delete-service my-first-cap-db` y dejar que MTA lo recree con `com.sap.xs.hdi-container`
+
+---
+
+## 23. MTA — `approuter/xs-app.json` para HTML5 repo
+
+A diferencia del deploy con `localDir`, el approuter en modo HTML5 repo sirve el contenido desde el `html5-apps-repo-rt`:
+
+```json
+{
+  "authenticationMethod": "route",
+  "welcomeFile": "/myfirsttasks/index.html",
+  "routes": [
+    {
+      "source": "^/odata/(.*)$",
+      "target": "/odata/$1",
+      "destination": "srv-api",
+      "authenticationType": "xsuaa"
+    },
+    {
+      "source": "^(.*)$",
+      "target": "$1",
+      "service": "html5-apps-repo-rt",
+      "authenticationType": "xsuaa"
+    }
+  ]
+}
+```
+
+- `welcomeFile` → el path viene del nombre del zip (`myfirsttasks.zip`)
+- El nombre del destination cambió de `cap-backend` a `srv-api` (definido en `mta.yaml` via `provides:`)
+- `service: html5-apps-repo-rt` no acepta `target` junto — usarlo solo
+
+**`app/tasks/xs-app.json`** (generado por `fiori add deploy-config`, va dentro del zip):
+```json
+{
+  "welcomeFile": "/index.html",
+  "authenticationMethod": "route",
+  "routes": [
+    {
+      "source": "^/odata/(.*)$",
+      "target": "/odata/$1",
+      "destination": "srv-api",
+      "authenticationType": "xsuaa",
+      "csrfProtection": false
+    },
+    {
+      "source": "^(.*)$",
+      "target": "$1",
+      "service": "html5-apps-repo-rt",
+      "authenticationType": "xsuaa"
+    }
+  ]
+}
+```
+
+**Gotcha:** `fiori add deploy-config` genera rutas `/resources/` y `/test-resources/` con `destination: "ui5"`. Si el approuter no está bindeado al destination service, estas rutas generan error 500 "Route references unknown destination". Eliminarlas.
+
+---
+
+## 24. Build y deploy MTA
+
+```bash
+mbt build
+cf deploy mta_archives/my-first-cap_1.0.0.mtar
+```
+
+El proceso hace automáticamente:
+1. `npm ci` en la raíz
+2. `npx cds build --production` → genera `gen/srv/` y `gen/db/`
+3. Build de cada módulo (srv, db-deployer, myfirsttasks, approuter)
+4. Empaqueta todo en `mta_archives/my-first-cap_1.0.0.mtar`
+5. Sube el archivo a CF y despliega en orden de dependencias
+
+---
+
+## 25. SAP Build Work Zone Standard Edition
+
+**Prerequisito:** IAS (Identity Authentication Service) es obligatorio. Work Zone no acepta SAML trust (el trust por defecto de BTP trial).
+
+**Pasos en BTP Cockpit:**
+1. Service Marketplace → buscar **"Cloud Identity Services"** → Subscribe (plan `default`)
+2. Esperar a que el IAS tenant se provisione
+3. Service Marketplace → buscar **"SAP Build Work Zone, Standard Edition"** → Subscribe (plan `standard`)
+
+**Error común:** "SAML trust isn't supported for this service" → solución: subscribir primero a Cloud Identity Services.
+
+**Acceder al Site Manager:**
+- Abrir la subscription de Work Zone → usar la URL con `.dt.launchpad.` (no la URL de usuario final)
+- Ejemplo: `https://c4939d22trial.dt.launchpad.cfapps.us10.hana.ondemand.com`
+
+**Error "accessDenied":**
+- El rol `Launchpad_Admin` se asigna en Security → Users
+- Hay DOS entradas de usuario: una de SAP ID Service y otra de IAS
+- Asignar `Launchpad_Admin` a la entrada de **IAS** (la que tiene el dominio del tenant IAS)
+
+---
+
+## 26. Work Zone — Tile manual para la app
+
+Como el Content Provider automático de HTML5 Apps no descubre la app en trial, crear un tile manual:
+
+**En Site Manager → Content Manager → "+ New" → "App":**
+
+Tab **Properties:**
+- Title: `My Tasks`
+- Open App: `New Tab`
+- URL: `https://{org}-{space}-my-first-cap-approuter.cfapps.us10-001.hana.ondemand.com/myfirsttasks/index.html`
+
+Tab **Navigation:**
+- Semantic Object: `Tasks`
+- Action: `display` (importante: sin typos)
+
+Tab **Visualization:**
+- Icon: `sap-icon://task`
+
+**Crear grupo:**
+- Content Manager → "+ New" → "Group"
+- Asignar la app al grupo
+
+**Asignar al rol Everyone:**
+- Content Manager → "Everyone" → Edit → asignar la app → Save
+
+**Resultado:** El tile aparece en el launchpad al abrir el sitio desde Site Manager.
+
+---
+
+## 27. Fixes aplicados durante el proceso
+
+**XSUAA redirect_uri no coincide:**
+```json
+"redirect-uris": [
+  "https://*.cfapps.us10-001.hana.ondemand.com/**"
+]
+```
+Aplicar con: `cf update-service my-first-cap-xsuaa -c xs-security.json`
+
+**`sap.cloud.service` requerido para Work Zone:**
+En `app/tasks/webapp/manifest.json`:
+```json
+"sap.cloud": {
+  "public": true,
+  "service": "my.first.cap"
+}
+```
+
+**`enableLazyLoading` debe ser `false`:**
+Work Zone pasa parámetros FLP en la URL. `enableLazyLoading: true` requiere un shell FLP real para inicializar. Sin él, la app carga en blanco.
+```json
+"sap.fe": {
+  "app": {
+    "enableLazyLoading": false
+  }
+}
+```
+
+**Hash FLP en la URL rompe el router de Fiori Elements:**
+Work Zone agrega el intent de navegación como hash: `#Tasks-display?sap-ui-app-id-hint=...`. El router de Fiori Elements intenta resolver ese hash como un path OData y falla con "Invalid resource path".
+
+Los campos Semantic Object y Action en el tile de Work Zone son obligatorios, así que no se puede evitar que Work Zone los agregue. La solución es limpiar el hash antes de que UI5 arranque.
+
+Agregar este script en `app/tasks/webapp/index.html` ANTES del bootstrap de UI5:
+```html
+<script>
+    (function() {
+        var hash = window.location.hash;
+        if (hash && /^#[A-Za-z]+-[A-Za-z]/.test(hash)) {
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+    })();
+</script>
+```
+
+El regex detecta el patrón FLP (`#SemanticObject-action`) y lo elimina antes de que UI5 procese el hash, dejando la URL limpia para el router de Fiori Elements.

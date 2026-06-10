@@ -9,11 +9,17 @@
   },
   "devDependencies": {
     "@cap-js/sqlite": "^2.4",
-    "cds-plugin-ui5": "^0.13.0"
+    "@sap/cds-dk": "^9",
+    "cds-plugin-ui5": "^0.13.0",
+    "rimraf": "^5.0.5",
+    "mbt": "^1.2.49"
   },
   "scripts": {
     "start": "cds-serve",
-    "watch-tasks": "cds watch --open my.first.tasks/index.html?sap-ui-xx-viewCache=false --livereload false"
+    "watch-tasks": "cds watch --open my.first.tasks/index.html?sap-ui-xx-viewCache=false --livereload false",
+    "undeploy": "cf undeploy my-first-cap --delete-services --delete-service-keys --delete-service-brokers",
+    "build": "rimraf resources mta_archives && mbt build --mtar archive",
+    "deploy": "cf deploy mta_archives/archive.mtar --retries 1"
   },
   "private": true,
   "workspaces": [
