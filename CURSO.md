@@ -822,3 +822,176 @@ CAP auto-genera las tablas de draft en HANA y expone las acciones OData `draftEd
 - Sin `@odata.draft.enabled`, sap.fe carga la app en modo display-only aunque las capabilities digan `Insertable: true`
 - Draft funciona en `cds watch` (SQLite) y en producción (HANA) sin configuración adicional
 - Al cambiar `@odata.draft.enabled` en producción, el MTA deploy actualiza automáticamente las tablas del HDI container
+
+---
+
+## 29. Migración a managed approuter - descubrimiento automático en Work Zone
+
+**Problema:** Work Zone nunca descubría la app en el canal HTML5 Apps (por eso el tile manual de la sección 26), la app no aparecía en HTML5 Applications del Cockpit, y al abrirla no cargaba el shell (sin header, sin perfil, sin navegación).
+
+**Causa raíz (una sola para los tres síntomas):** el proyecto usaba el patrón de **approuter standalone**. El recurso `my-first-cap-destination-service` existía con `HTML5Runtime_enabled: true`, pero ningún módulo lo consumía y no había módulo `destination-content`. Ese módulo es el que crea los destinations que Work Zone usa para descubrir apps del HTML5 repo:
+
+- `my_first_cap_repo_host` → apunta al html5-apps-repo (con service key)
+- `my_first_cap_uaa` → apunta al XSUAA con `OAuth2UserTokenExchange`
+
+Sin ellos, el approuter managed de SAP (el que opera Work Zone) no tiene cómo llegar ni al contenido ni a la autenticación.
+
+### Cambio 1 — Nuevo módulo en `mta.yaml` (sección `modules:`)
+
+```yaml
+- name: my-first-cap-destination-content
+  type: com.sap.application.content
+  requires:
+  - name: my-first-cap-destination-service
+    parameters:
+      content-target: true
+  - name: my-first-cap-repo-host
+    parameters:
+      service-key:
+        name: my-first-cap-repo-host-key
+  - name: my-first-cap-xsuaa
+    parameters:
+      service-key:
+        name: my-first-cap-xsuaa-key
+  parameters:
+    content:
+      instance:
+        destinations:
+        - Name: my_first_cap_repo_host
+          ServiceInstanceName: my-first-cap-html5-service
+          ServiceKeyName: my-first-cap-repo-host-key
+          sap.cloud.service: my.first.cap
+        - Name: my_first_cap_uaa
+          Authentication: OAuth2UserTokenExchange
+          ServiceInstanceName: my-first-cap-xsuaa
+          ServiceKeyName: my-first-cap-xsuaa-key
+          sap.cloud.service: my.first.cap
+        existing_destinations_policy: ignore
+  build-parameters:
+    no-source: true
+```
+
+**Error encontrado:** `field build-parameters not found in type mta.Resource` (línea del bloque nuevo).
+
+**Fix:** el bloque se había pegado en `resources:`. `destination-content` es un **módulo** (`com.sap.application.content` con `build-parameters` solo es válido en módulos). Moverlo a `modules:`, al mismo nivel de indentación que los demás módulos.
+
+### Cambio 2 — Recurso `my-first-cap-destination-service` ampliado
+
+En el runtime managed, la ruta `/odata/(.*) → destination srv-api` del `xs-app.json` de `app/tasks` se resuelve contra el **destination service**, no contra el approuter propio. El destination `srv-api` debe existir ahí:
+
+```yaml
+- name: my-first-cap-destination-service
+  type: org.cloudfoundry.managed-service
+  requires:
+  - name: srv-api
+  parameters:
+    config:
+      HTML5Runtime_enabled: true
+      init_data:
+        instance:
+          destinations:
+          - Name: srv-api
+            URL: ~{srv-api/srv-url}
+            Authentication: NoAuthentication
+            Type: HTTP
+            ProxyType: Internet
+            HTML5.DynamicDestination: true
+            HTML5.ForwardAuthToken: true
+          - Name: ui5
+            Authentication: NoAuthentication
+            ProxyType: Internet
+            Type: HTTP
+            URL: https://ui5.sap.com
+          existing_destinations_policy: update
+      version: 1.0.0
+    service: destination
+    service-name: my-first-cap-destination-service
+    service-plan: lite
+```
+
+### Cambio 3 — `xs-security.json`: redirect para el dominio del launchpad
+
+El token exchange de Work Zone llega desde el dominio del launchpad, no desde `*.cfapps.us10-001`:
+
+```json
+"redirect-uris": [
+  "https://*.cfapps.us10-001.hana.ondemand.com/**",
+  "https://*.hana.ondemand.com/**"
+]
+```
+
+Aplicar con: `cf update-service my-first-cap-xsuaa -c xs-security.json` (una sola vez; el cambio queda en la nube).
+
+### Arquitectura resultante
+
+- **Código UI:** vive en el HTML5 Application Repository (`my-first-cap-html5-service`), subido por `my-first-cap-app-content` como `myfirsttasks.zip`.
+- **Desde Work Zone:** sirve el **approuter managed de SAP** (no corre en el space) usando `my_first_cap_repo_host` (archivos), `my_first_cap_uaa` (token exchange) y `srv-api` (OData → CAP).
+- **Approuter standalone (`approuter/`):** queda solo como URL de acceso directo para pruebas; Work Zone no lo usa. En trial se puede eliminar para liberar memoria sin afectar nada.
+
+---
+
+## 30. Deploy desde SAP Business Application Studio
+
+Por mala señal en local, el redeploy se hizo clonando el repo en BAS.
+
+**Puntos clave:**
+- Dev Space tipo **Full Stack Cloud Application** → ya trae `cf` CLI, `mbt`, `cds-dk` y el plugin multiapps. No se instala nada global.
+- Los servicios de CF viven en el **space**, no en la máquina: no se repite `cf create-service` (el XSUAA es `existing-service` en el mta y daría "already exists"). El HDI container se reutiliza y los datos en HANA persisten.
+- El `cf update-service` del XSUAA hecho desde la laptop **no** se repite — ya quedó aplicado en la nube. Lo que sí: verificar que los cambios de `mta.yaml` y `xs-security.json` llegaron al repo (commit/push) antes de clonar.
+- Flujo: clonar → verificar cambios → `npm install` → `cf login -a https://api.cf.us10-001.hana.ondemand.com` → verificar HANA Cloud corriendo → `npm run build && npm run deploy`.
+
+### Error conocido: "Detaching service my-first-cap-auth" → Process failed
+
+El deploy termina con:
+
+```
+Error detaching services from MTA: 404 Not Found: CF-ServiceInstanceNotFound: my-first-cap-auth
+Process failed.
+```
+
+**No es un error real del deploy.** Todo lo importante ocurre antes de esa línea (services actualizados, service keys creadas, content modules desplegados, apps arrancadas). La metadata del MTA todavía referencia un servicio `my-first-cap-auth` de un deploy antiguo (nombre previo del XSUAA) que ya no existe; cada deploy intenta desasociarlo, recibe 404 y marca el proceso como fallido.
+
+**Workaround inmediato:** abortar la operación colgada:
+
+```bash
+cf deploy -i <operation-id> -a abort
+```
+
+**Fix permanente:** crear un servicio dummy con ese nombre para que el detach tenga qué desasociar, redesplegar una vez, y borrarlo:
+
+```bash
+cf cups my-first-cap-auth -p '{}'
+npm run deploy
+cf delete-service my-first-cap-auth -f
+```
+
+---
+
+## 31. Work Zone — App desde Content Explorer + fix 403 Tasks.Read
+
+Con el patrón managed desplegado (sección 29), la integración con Work Zone cambia: ya no se usa el tile manual de la sección 26.
+
+**Pasos:**
+1. Site Manager → **Channel Manager** → canal HTML5 Apps → botón **refresh** (el canal no se actualiza solo de inmediato).
+2. **Content Manager → Content Explorer → HTML5 Apps** → la app `Task Manager` ya aparece → Add to My Content.
+3. Asignar la app a un grupo y a un rol (Everyone o uno propio). Eliminar el tile manual viejo.
+4. La app se lanza vía el intent `Tasks-display` **dentro del shell** de Work Zone: header con perfil y navegación incluidos (esto resolvió el síntoma del header faltante).
+
+### Error encontrado: la app carga el shell pero queda en blanco, consola con 403
+
+```
+User 'cesargael.garcia@viakable.com' is lacking required roles: [Tasks.Read]
+Error: Could not load metadata: 403 error
+```
+
+**Causa:** las asignaciones de role collections en BTP son **por identity provider de origen**. Con IAS configurado (prerequisito de Work Zone, sección 25), el mismo correo existe dos veces en Security → Users: una entrada con origen `sap.default` (SAP ID) y otra con el origen del tenant IAS. El role collection `TasksEditor` estaba asignado solo a la entrada de SAP ID, pero Work Zone autentica vía **IAS** → el token exchange genera un JWT sin el scope `Tasks.Read` → el CAP responde 403.
+
+(Por el approuter standalone sí funcionaba porque ese flujo entraba con la entrada de SAP ID.)
+
+**Fix:**
+1. Cockpit → Security → Users → buscar el correo → identificar la entrada con origen **IAS** → asignarle `TasksEditor`.
+2. Cerrar sesión de Work Zone por completo y volver a entrar (o incógnito) — los JWT cachean los scopes.
+
+**Ruido de consola ignorable:** deprecation warnings de `sap.ushell`, intents `IntelligentPrompt-*` sin resolver (Joule), 404 de `fincentraluserdefaultparameter`, y warnings de fallback locale `en` en i18n. Ninguno afecta la app.
+
+**Regla general para futuros proyectos:** con cualquier IdP custom (IAS), siempre verificar a qué entrada de usuario se asignan los role collections. Este gotcha aplica a cualquier app protegida con XSUAA consumida desde Work Zone.
