@@ -49,22 +49,6 @@ modules:
     - npm install
     - npm run build:cf
     supported-platforms: []
-- name: my-first-cap-approuter
-  type: approuter.nodejs
-  path: approuter
-  parameters:
-    keep-existing-routes: true
-    disk-quota: 256M
-    memory: 256M
-  requires:
-  - name: srv-api
-    group: destinations
-    properties:
-      name: srv-api
-      url: ~{srv-url}
-      forwardAuthToken: true
-  - name: my-first-cap-xsuaa
-  - name: my-first-cap-repo-runtime
 - name: my-first-cap-destination-content
   type: com.sap.application.content
   requires:
@@ -138,18 +122,3 @@ resources:
     service: destination
     service-name: my-first-cap-destination-service
     service-plan: lite
-- name: my-first-cap-repo-runtime
-  type: org.cloudfoundry.managed-service
-  parameters:
-    service: html5-apps-repo
-    service-name: my-first-cap-html5-runtime
-    service-plan: app-runtime
-parameters:
-  deploy_mode: html5-repo
-  enable-parallel-deployments: true
-build-parameters:
-  before-all:
-  - builder: custom
-    commands:
-    - npm ci
-    - npx cds build --production
