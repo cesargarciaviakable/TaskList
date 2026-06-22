@@ -1,0 +1,128 @@
+[36m[cds-plugin-ui5][0m [32m[INFO][0m Running cds-plugin-ui5@0.13.6 (@sap/cds-dk@9.9.2, @sap/cds@9.9.1)
+[36m[cds-plugin-ui5][0m [32m[INFO][0m Mounting /my.first.approvals to UI5 app /home/user/projects/TaskList/app/approvals (id=approvals)
+[36m[cds][0m [32m[INFO][0m loaded model from 7 file(s):
+ 
+  app/services.cds
+  app/tasks/annotations.cds
+  app/approvals/annotations.cds
+  srv/task-service.cds
+  srv/approval-service.cds
+  db/schema.cds
+  node_modules/@sap/cds/common.cds
+
+[36m[cds][0m [32m[INFO][0m connect to db > sqlite { url: ':memory:' }
+  > init from db/data/my.first-Tasks.csv 
+  > init from db/data/my.first-Statuses.csv 
+  > init from db/data/my.first-ApprovalRequests.csv 
+/> successfully deployed to in-memory database. 
+
+[36m[cds][0m [33m[WARN][0m WARNING: custom action 'reject()' conflicts with method in base class.
+
+      Cannot add typed method for custom action 'reject' to service impl of 'ApprovalService',
+      as this would shadow equally named method in service base class 'ApplicationService'.
+      Consider choosing a different name for your custom action.
+      Learn more at https://cap.cloud.sap/docs/guides/providing-services#actions-and-functions.
+    
+[36m[cds][0m [32m[INFO][0m using auth strategy { kind: 'dummy' }
+[36m[cds][0m [32m[INFO][0m serving ApprovalService {
+  at: [ '/odata/v4/approval' ],
+  decl: 'srv/approval-service.cds:3',
+  impl: 'srv/approval-service.js'
+}
+[36m[cds][0m [32m[INFO][0m serving TaskService {
+  at: [ '/odata/v4/task' ],
+  decl: 'srv/task-service.cds:3',
+  impl: 'srv/task-service.js'
+}
+[32minfo[39m fiori-tools-proxy Using UI5 version 1.148.1 based on manifest.json
+[32minfo[39m fiori-tools-proxy Starting fiori-tools-proxy using following configuration:
+[32minfo[39m fiori-tools-proxy proxy: 'http://127.0.0.1:8887'
+[32minfo[39m fiori-tools-proxy ignoreCertErrors: 'false'
+[32minfo[39m fiori-tools-proxy backend: undefined
+[32minfo[39m fiori-tools-proxy ui5: [{"path":"/resources","url":"https://sapui5.hana.ondemand.com","version":"1.148.1"},{"path":"/test-resources","url":"https://sapui5.hana.ondemand.com","version":"1.148.1"}]
+[32minfo[39m fiori-tools-proxy debug: 'false'
+[32minfo[39m fiori-tools-appreload Livereload middleware started for port 35729 and path /home/user/projects/TaskList/app/approvals/webapp
+[36m[cds][0m [32m[INFO][0m loaded model from 7 file(s):
+ 
+  app/services.cds
+  app/tasks/annotations.cds
+  app/approvals/annotations.cds
+  srv/task-service.cds
+  srv/approval-service.cds
+  db/schema.cds
+  node_modules/@sap/cds/common.cds
+
+[36m[cds][0m [32m[INFO][0m loaded model from 7 file(s):
+ 
+  app/services.cds
+  app/tasks/annotations.cds
+  app/approvals/annotations.cds
+  srv/task-service.cds
+  srv/approval-service.cds
+  db/schema.cds
+  node_modules/@sap/cds/common.cds
+
+[32minfo[39m fiori-tools-preview Initialized for app my.first.approvals
+[36m[cds-plugin-ui5][0m [32m[INFO][0m Mounting /my.first.tasks to UI5 app /home/user/projects/TaskList/app/tasks (id=tasks)
+[32minfo[39m fiori-tools-proxy Using UI5 version 1.148.1 based on manifest.json
+[32minfo[39m fiori-tools-proxy Starting fiori-tools-proxy using following configuration:
+[32minfo[39m fiori-tools-proxy proxy: 'http://127.0.0.1:8887'
+[32minfo[39m fiori-tools-proxy ignoreCertErrors: 'false'
+[32minfo[39m fiori-tools-proxy backend: undefined
+[32minfo[39m fiori-tools-proxy ui5: [{"path":"/resources","url":"https://sapui5.hana.ondemand.com","version":"1.148.1"},{"path":"/test-resources","url":"https://sapui5.hana.ondemand.com","version":"1.148.1"}]
+[32minfo[39m fiori-tools-proxy debug: 'false'
+[32minfo[39m fiori-tools-appreload Livereload middleware started for port 35730 and path /home/user/projects/TaskList/app/tasks/webapp
+[36m[cds][0m [32m[INFO][0m loaded model from 7 file(s):
+ 
+  app/services.cds
+  app/tasks/annotations.cds
+  app/approvals/annotations.cds
+  srv/task-service.cds
+  srv/approval-service.cds
+  db/schema.cds
+  node_modules/@sap/cds/common.cds
+
+[36m[cds][0m [32m[INFO][0m loaded model from 7 file(s):
+ 
+  app/services.cds
+  app/tasks/annotations.cds
+  app/approvals/annotations.cds
+  srv/task-service.cds
+  srv/approval-service.cds
+  db/schema.cds
+  node_modules/@sap/cds/common.cds
+
+[32minfo[39m fiori-tools-preview Initialized for app my.first.tasks
+[36m[cds-plugin-ui5][0m [31m[ERROR][0m Failed to inject application pages to welcome page! The links of the application pages may not work properly!
+[36m[cds][0m [32m[INFO][0m server listening on { url: 'http://localhost:4004' }
+[36m[cds][0m [32m[INFO][0m server v9.9.1 launched in 3464 ms
+[36m[odata][0m [32m[INFO][0m GET /odata/v4/approval/$metadata 
+[36m[odata][0m [32m[INFO][0m HEAD /odata/v4/approval/ 
+[36m[odata][0m [32m[INFO][0m GET /odata/v4/approval/$metadata { 'sap-language': 'ES' }
+[36m[odata][0m [32m[INFO][0m POST /odata/v4/approval/$batch 
+[36m[odata][0m [32m[INFO][0m > GET /ApprovalRequests {
+  '$count': 'true',
+  '$select': 'ID,createdAt,requestedBy,status',
+  '$skip': '0',
+  '$top': '30'
+}
+[36m[odata][0m [32m[INFO][0m POST /odata/v4/approval/$batch 
+[36m[odata][0m [32m[INFO][0m > GET /ApprovalRequests(b1a2b3c4-0001-0000-0000-000000000001) {
+  '$select': 'ID,approvedBy,comment,createdAt,decidedAt,requestedBy,status',
+  '$expand': 'taskID($select=ID,title)'
+}
+[36m[odata][0m [32m[INFO][0m POST /odata/v4/approval/$batch 
+[36m[odata][0m [32m[INFO][0m > POST /ApprovalRequests(b1a2b3c4-0001-0000-0000-000000000001)/ApprovalService.approve 
+[MockEngine] approved b1a2b3c4-0001-0000-0000-000000000001 — local mock, no-op
+[36m[odata][0m [32m[INFO][0m POST /odata/v4/approval/$batch 
+[36m[odata][0m [32m[INFO][0m > GET /ApprovalRequests {
+  '$count': 'true',
+  '$select': 'ID,createdAt,requestedBy,status',
+  '$skip': '0',
+  '$top': '30'
+}
+[36m[odata][0m [32m[INFO][0m POST /odata/v4/approval/$batch 
+[36m[odata][0m [32m[INFO][0m > GET /ApprovalRequests(b1a2b3c4-0001-0000-0000-000000000001) {
+  '$select': 'ID,approvedBy,comment,createdAt,decidedAt,requestedBy,status',
+  '$expand': 'taskID($select=ID,title)'
+}

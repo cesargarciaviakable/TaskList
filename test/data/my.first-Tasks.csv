@@ -1,0 +1,7 @@
+ID,title,description,status,createdAt,createdBy,modifiedAt,modifiedBy
+e1f2a3b4-0001-0000-0000-000000000001,Aprender CAP,Entender modelos y servicios,Open,2026-06-18T10:00:00Z,alice,2026-06-18T10:00:00Z,alice
+e1f2a3b4-0002-0000-0000-000000000002,Conectar HANA Cloud,Configurar credenciales BTP,Open,2026-06-18T11:00:00Z,alice,2026-06-18T11:00:00Z,alice
+e1f2a3b4-0003-0000-0000-000000000003,Crear UI Fiori,Construir primer List Report,In Progress,2026-06-18T12:00:00Z,alice,2026-06-19T08:00:00Z,alice
+e1f2a3b4-0004-0000-0000-000000000004,Implementar módulo de reporting,Generar reportes mensuales con datos agregados,PendingApproval,2026-06-17T09:00:00Z,juan,2026-06-19T09:00:00Z,juan
+e1f2a3b4-0005-0000-0000-000000000005,Configurar integración SAP,Integrar con sistema SAP legacy para sincronización,PendingApproval,2026-06-16T14:00:00Z,maria,2026-06-19T10:00:00Z,maria
+e1f2a3b4-0006-0000-0000-000000000006,Revisar documentación técnica,Revisar y actualizar docs de la arquitectura actual,PendingApproval,2026-06-15T08:00:00Z,juan,2026-06-19T11:00:00Z,juan

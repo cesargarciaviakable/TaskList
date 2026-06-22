@@ -16,6 +16,7 @@
   "scripts": {
     "start": "cds-serve",
     "watch-tasks": "cds watch --open my.first.tasks/index.html?sap-ui-xx-viewCache=false --livereload false",
+    "watch-approvals": "cds watch --open my.first.approvals/index.html?sap-ui-xx-viewCache=false --livereload false",
     "undeploy": "cf undeploy my-first-cap --delete-services --delete-service-keys --delete-service-brokers",
     "build": "rimraf resources mta_archives && mbt build --mtar archive",
     "deploy": "cf deploy mta_archives/archive.mtar --retries 1"
@@ -25,23 +26,21 @@
     "app/*"
   ],
   "sapux": [
-    "app/tasks"
+    "app/tasks",
+    "app/approvals"
   ],
   "cds": {
+    "fiori": { "bypass_draft": true },
     "requires": {
+      "auth": { "kind": "dummy" },
       "db": {
         "[hybrid]": { "kind": "hana" },
         "[production]": { "kind": "hana" }
       },
-      "[development]": {
-        "auth": {
-          "kind": "mocked",
-          "users": {
-            "alice": { "roles": ["Tasks.Read", "Tasks.Write"] }
-          }
-        }
-      },
-      "[production]": {
+      "workflow": { "kind": "mock" }
+    },
+    "[production]": {
+      "requires": {
         "auth": "xsuaa"
       }
     }

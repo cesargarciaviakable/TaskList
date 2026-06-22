@@ -39,9 +39,23 @@ modules:
       - myfirsttasks.zip
       name: myfirsttasks
       target-path: resources/
+    - artifacts:
+      - myfirstapprovals.zip
+      name: myfirstapprovals
+      target-path: resources/
 - name: myfirsttasks
   type: html5
   path: app/tasks
+  build-parameters:
+    build-result: dist
+    builder: custom
+    commands:
+    - npm install
+    - npm run build:cf
+    supported-platforms: []
+- name: myfirstapprovals
+  type: html5
+  path: app/approvals
   build-parameters:
     build-result: dist
     builder: custom

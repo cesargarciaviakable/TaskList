@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Task Approvals</title>
+    <style>
+        html, body, body > div, #container, #container-uiarea {
+            height: 100%;
+        }
+    </style>
+    <script>
+        (function() {
+            var hash = window.location.hash;
+            if (hash && /^#[A-Za-z]+-[A-Za-z]/.test(hash)) {
+                window.history.replaceState(null, '', window.location.pathname + window.location.search);
+            }
+        })();
+    </script>
+    <script
+        id="sap-ui-bootstrap"
+        src="https://sapui5.hana.ondemand.com/1.148.1/resources/sap-ui-core.js"
+        data-sap-ui-theme="sap_horizon"
+        data-sap-ui-resource-roots='{
+            "my.first.approvals": "./"
+        }'
+        data-sap-ui-on-init="module:sap/ui/core/ComponentSupport"
+        data-sap-ui-compat-version="edge"
+        data-sap-ui-async="true"
+        data-sap-ui-frame-options="trusted"
+        data-sap-ui-preload="none"
+    ></script>
+</head>
+<body class="sapUiBody sapUiSizeCompact" id="content">
+    <div
+        data-sap-ui-component
+        data-name="my.first.approvals"
+        data-id="container"
+        data-settings='{"id" : "my.first.approvals"}'
+        data-handle-validation="true"
+    ></div>
+</body>
+</html>

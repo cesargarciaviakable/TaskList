@@ -15,6 +15,14 @@
     {
       "name": "$XSAPPNAME.Tasks.Write",
       "description": "Create and update tasks"
+    },
+    {
+      "name": "$XSAPPNAME.Approvals.Read",
+      "description": "View approval requests"
+    },
+    {
+      "name": "$XSAPPNAME.Approvals.Write",
+      "description": "Approve or reject requests"
     }
   ],
   "attributes": [],
@@ -32,6 +40,14 @@
       "scope-references": [
         "$XSAPPNAME.Tasks.Read",
         "$XSAPPNAME.Tasks.Write"
+      ]
+    },
+    {
+      "name": "Approver",
+      "description": "Can read, approve, and reject approval requests",
+      "scope-references": [
+        "$XSAPPNAME.Approvals.Read",
+        "$XSAPPNAME.Approvals.Write"
       ]
     }
   ]

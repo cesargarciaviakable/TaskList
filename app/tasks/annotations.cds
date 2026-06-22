@@ -28,6 +28,11 @@ annotate service.Tasks with @(
         Label: 'status',
         Value: status,
       },
+      {
+        $Type: 'UI.DataField',
+        Label: 'rejection reason',
+        Value: rejectionComment,
+      },
     ],
   },
   UI.Facets                    : [{
