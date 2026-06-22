@@ -118,6 +118,32 @@ Para que `cf create-service hana hdi-shared ...` funcione, la instancia HANA tie
 2. **Environment Instance ID** = el GUID de tu **space** de Cloud Foundry.
 3. **Environment Group** = el GUID de tu **org** de Cloud Foundry.
 
+#### Cómo obtener esos dos GUID
+
+**Opción A — con la CLI de Cloud Foundry** (ya logueado con `cf login`, ver sección 5):
+
+```bash
+cf target
+# muestra el nombre de tu org y tu space actuales, ej.:
+#   org:    c4939d22trial
+#   space:  dev
+
+cf org <tu-org> --guid
+# ejemplo: cf org c4939d22trial --guid
+# devuelve algo como: d8c02e60-2ec9-4f92-bf6d-3ddf8db07490   ← Environment Group
+
+cf space "<tu-space>" --guid
+# ejemplo: cf space dev --guid
+# devuelve algo como: 13ed2922-faec-4a73-8c51-2d35d03a4707   ← Environment Instance ID
+```
+
+(si el nombre del space tiene espacios, ponelo entre comillas, ej. `cf space "HANA Cloud" --guid`).
+
+**Opción B — desde el Cockpit, sin la CLI:**
+
+1. Subaccount → **Cloud Foundry → Spaces** → click en tu space → el **Space GUID** aparece en la pestaña de detalles / en la URL del navegador (`.../spaces/<GUID>/...`).
+2. Subaccount → pestaña **Overview** → el **Org GUID** aparece junto a los datos de la org (también visible con `cf org <tu-org> --guid` si preferís no buscarlo a mano).
+
 Sin este paso, cualquier intento de crear un HDI container falla con "no database available".
 
 ---
