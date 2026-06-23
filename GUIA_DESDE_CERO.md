@@ -83,7 +83,12 @@ En el Cockpit, dentro de tu subaccount:
 
 1. Ir a **Entitlements** (menú lateral izquierdo).
 2. Confirmar (o agregar si falta, con **Configure Entitlements → Add Service Plans**) que están disponibles:
-   - **SAP HANA Cloud** (plan `hana`)
+   - **SAP HANA Cloud** — acá tenés que agregar **dos planes por separado**, son cosas distintas:
+     - `tools` (Suscripción): habilita la interfaz de administración, **SAP HANA Cloud Central**. Sin este plan no podés ni llegar al wizard para crear la base.
+     - `hana` o `hana-free` (Instancia): es la base de datos en memoria en sí — el servicio que realmente vas a usar desde CAP vía HDI container.
+     - **Opcionales — omitilos a menos que el proyecto los necesite:**
+     - - `relational-data-lake-free`: almacenamiento en disco para datos fríos, no para la operación normal de la app.
+       - `hana-cloud-connection-free`: conexión hacia un sistema on-premise. No aplica a este proyecto, que es 100% cloud.
    - **SAP HANA Schemas & HDI Containers** (plan `hdi-shared`)
    - **Authorization and Trust Management Service (XSUAA)** (plan `application`)
    - **HTML5 Application Repository Service** (planes `app-host` y `app-runtime`)
@@ -92,7 +97,7 @@ En el Cockpit, dentro de tu subaccount:
    - **SAP Build Work Zone, Standard Edition** (plan `standard` o `free`)
    - **Cloud Identity Services** (plan `default`) — lo vas a necesitar para Work Zone, ver paso 18.
 
-En cuentas trial nuevas, casi todo esto ya viene pre-asignado. Si algo falta, "Configure Entitlements" te deja agregarlo de la lista de servicios disponibles para tu licencia trial.
+En cuentas trial nuevas, casi todo esto ya viene preasignado. Si algo falta, "Configure Entitlements" te deja agregarlo de la lista de servicios disponibles para tu licencia trial.
 
 ---
 
@@ -100,13 +105,31 @@ En cuentas trial nuevas, casi todo esto ya viene pre-asignado. Si algo falta, "C
 
 A diferencia de los demás servicios (que se crean solos al hacer el deploy), **la base de datos HANA Cloud es una instancia de infraestructura real** que tenés que aprovisionar una sola vez, manualmente, desde el Cockpit. Tarda entre 20 y 40 minutos.
 
-1. En el Cockpit, ir a **Instances and Subscriptions** → pestaña de instancias → **Create** → buscar **SAP HANA Cloud**.
-2. Elegir el plan **hana**.
-3. En el wizard de SAP HANA Cloud Central:
-   - **Instance Name**: cualquier nombre, ej. `my-hana-trial`.
-   - **Compute & Memory**: dejá el tamaño mínimo que ofrece el trial (no hay opción de elegir mucho más en trial).
-   - **SAP HANA Database password**: definí un password — no lo vas a usar directamente (CAP se conecta vía HDI container, sin host/usuario/password manual), pero queda como administrador de la instancia.
-4. Confirmar y esperar. El estado pasa de `CREATING` a `RUNNING`.
+Esto requiere tres pasos separados — no es solo "crear la instancia": primero la suscripción de administración, después permisos para tu usuario, y recién ahí la instancia de base de datos.
+
+### 3.1 Habilitar la suscripción de administración
+
+1. En el Cockpit, ir a **Instances and Subscriptions** → **Create**.
+2. Buscar **SAP HANA Cloud** y seleccionar el plan **tools** (la suscripción de administración, no la instancia de base de datos).
+3. Confirmar. Esto sube la **subscription** que te da acceso a **SAP HANA Cloud Central**, la interfaz desde la que vas a crear y administrar la instancia real más adelante.
+
+### 3.2 Asignar permisos y actualizar sesión
+
+1. Cockpit → tu subaccount → **Security → Users**.
+2. Seleccionar tu usuario → **Assign Role Collection** → asignar **SAP HANA Cloud Administrator**.
+3. **Este paso es obligatorio y se suele pasar por alto:** el JWT de tu sesión actual ya tiene los roles viejos cacheados, así que el rol nuevo no se ve hasta que renueves el token. Usá una **ventana de incógnito**, limpiá el caché del navegador, o entrá con **otro navegador** para volver a iniciar sesión y regenerar el access token con el rol ya incluido. Si seguís en la misma sesión, vas a ver la subscription de HANA Cloud Central sin permisos o directamente inaccesible.
+
+### 3.3 Crear la instancia de base de datos
+
+1. Cockpit → **Instances and Subscriptions** → localizá la suscripción de SAP HANA Cloud creada en el paso 3.1 → **Go to Application**. Esto te lleva a **SAP HANA Cloud Central**.
+2. Dentro de SAP HANA Cloud Central, ejecutar **Create instance**. El wizard tiene 6 pasos:
+   1. **Instance Configuration**: elegir **Configure manually**, y como **Instance type** seleccionar **SAP HANA Database**.
+   2. **General**: definir el **Instance Name** (cualquier nombre, ej. `my-hana-trial`) y la contraseña del usuario administrador **SYSTEM** — no la vas a usar directamente (CAP se conecta vía HDI container, sin host/usuario/password manual), pero queda como administrador de la instancia.
+   3. **Compute & Memory**: dejar los valores por defecto, no hay nada que cambiar acá en el trial.
+   4. **Network Access**: configurar como **All IP addresses** — sin esto, el HDI container que usa CAP no puede llegar a la instancia.
+   5. **Additional Settings**: dejar los valores por defecto, no hay nada que cambiar acá.
+   6. **Review and Create**: revisar el resumen y presionar **Review and Create** para confirmar.
+3. El estado pasa de `CREATING` a `RUNNING`.
 
 **Importante (gotcha real del trial):** las instancias HANA Cloud trial **se detienen automáticamente por inactividad** para ahorrar cuota. Antes de cualquier deploy o sesión de desarrollo contra HANA real, volvé a SAP HANA Cloud Central y verificá que el estado sea `RUNNING` — si no, dale **Start** y esperá unos minutos.
 
