@@ -703,6 +703,37 @@ Mismo wizard, mismas opciones, salvo:
 
 El generador crea `app/tasks/webapp` y `app/approvals/webapp` con `manifest.json`, `Component.js`, `index.html`, i18n, etc. — todo eso es boilerplate estándar de SAPUI5, no se edita a mano.
 
+### Ajustes obligatorios en `manifest.json` post-generación
+
+El wizard deja dos valores incorrectos en ambos `manifest.json` que hay que corregir a mano antes de hacer deploy:
+
+**1. enableLazyLoading: true → false**
+
+Buscar en `app/tasks/webapp/manifest.json` y `app/approvals/webapp/manifest.json` la sección `sap.ui5.routing` (o `sap.ui5`) y cambiar:
+
+```json
+"routing": {
+  "config": {
+    "enableLazyLoading": false
+  }
+}
+```
+
+Con `true` (el default del wizard), Fiori Elements intenta cargar las vistas bajo demanda y el Object Page puede quedar en blanco o con errores de navegación en producción.
+
+**2. sap.cloud.service: "my-first-cap" → "my.first.cap"**
+
+En la sección `sap.cloud` de cada `manifest.json`:
+
+```json
+"sap.cloud": {
+  "public": true,
+  "service": "my.first.cap"
+}
+```
+
+El wizard genera el valor con guiones (`"my-first-cap"`) pero el `mta.yaml` lo declara con puntos (`my.first.cap`) en el módulo `my-first-cap-destination-content`. Si no coinciden, Work Zone no puede asociar la app con sus destinations y las tiles aparecen sin ruta o con error 404.
+
 ### Anotaciones — `app/tasks/annotations.cds`
 
 ```javascript
@@ -1054,6 +1085,20 @@ Todo lo demás (`my-first-cap-db`, `my-first-cap-repo-host`, `my-first-cap-desti
 }
 ```
 
+**Prerrequisito: agregar @sap/xssec antes del primer deploy**
+
+El buildpack de Cloud Foundry instala solo las dependencias declaradas en `package.json`. `@sap/xssec` (la librería de verificación de tokens JWT que usa XSUAA en producción) es una dependencia transitiva de `@sap/cds` pero **no se incluye automáticamente** cuando CF arma el bundle — el resultado es que el servidor arranca, pero cualquier request autenticado crashea con `Cannot find module '@sap/xssec'`.
+
+Agregarlo explícitamente antes del primer deploy:
+
+```bash
+npm install @sap/xssec --save
+```
+
+Verificá que quede en la sección `"dependencies"` (no `"devDependencies"`) del `package.json` raíz.
+
+---
+
 Flujo completo desde cero:
 
 ```bash
@@ -1151,4 +1196,8 @@ Las apps ya deberían aparecer como tiles en tu site de Work Zone.
 - **Content Manager → Channel Manager se queda en "Actualizando..." con error genérico** → normalmente alcanza con esperar 2-3 minutos y reintentar; el job de sincronización es asíncrono y la UI no siempre lo comunica bien, sobre todo justo después de un deploy.
 - **403 "lacking required roles" en Work Zone pero "ya le di el rol" en el Cockpit** → revisar a qué entrada de usuario (origen `sap.default` vs origen IAS) está asignada la Role Collection — ver sección 17.
 - **tenant-mode de XSUAA no se puede cambiar con update-service** → hay que borrar el servicio (`cf delete-service-key` + `cf delete-service`) y recrearlo.
+- **ReferenceError: Selection is not defined en approval-service.js** → el identificador correcto de la API fluent de CAP es `SELECT` (mayúsculas). `Selection` no existe — JS lo reporta como `ReferenceError` en runtime. Revisar todos los usos de `SELECT`, `INSERT`, `UPDATE`, `DELETE` en los handlers y asegurarse de que estén en mayúsculas.
+- **CAP genera la FK como taskID\_ID, no task\_ID** → cuando una association se llama `taskID` (camelCase), CAP construye el nombre de la columna de FK concatenando el nombre del campo más `_ID`, resultando en `taskID_ID`. Si en algún handler se usó `task_ID` como nombre de columna, no va a matchear ninguna fila y las queries van a retornar vacías sin error. Verificar todos los `.where({ taskID_ID: ... })` en `approval-service.js` y `task-service.js`.
+- **Borrar una Task no borra sus ApprovalRequests (FK violation o registros huérfanos)** → CAP no genera `ON DELETE CASCADE` automáticamente para associations. Hay que agregar un handler explícito en `task-service.js`:Sin esto, borrar una tarea desde Task Manager deja `ApprovalRequests` huérfanas en la base, o falla con error de FK si HANA tiene la restricción activa.
+- **La suscripción a Work Zone falla con HTTP 422 aunque el OIDC trust ya exista** → el trust OIDC entre el subaccount y el tenant IAS puede quedar en un estado inconsistente que Work Zone no acepta durante la suscripción, aunque el Cockpit lo muestre como activo. Fix: ir a **Security → Trust Configuration**, borrar el trust existente con el tenant IAS, recrearlo desde cero usando **Establish Trust** (no "Create" manual — el wizard de "Establish Trust" genera la configuración correcta), y reintentar la suscripción a Work Zone.
 - Para el detalle completo de errores reales encontrados durante el desarrollo de este proyecto (mensajes exactos, stack traces, fixes aplicados en el momento), ver `CURSO.md`.
