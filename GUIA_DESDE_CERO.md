@@ -899,6 +899,11 @@ El wizard pregunta:
 
 Esto genera `ui5-deploy.yaml`, `xs-app.json`, agrega scripts `build:cf` al `package.json` de la app, y agrega los módulos correspondientes al `mta.yaml` (sección 14).
 
+> **Nota:** al abrir las apps en desarrollo local (`cds watch`), el header muestra el 
+> ícono genérico de UI5 en lugar del logo corporativo. Esto es comportamiento esperado 
+> del standalone preview - en Work Zone el shell del launchpad reemplaza ese header 
+> con el logo y navegación configurados en el Site Manager.
+
 ---
 
 ## 14. Empaquetado MTA — `mta.yaml`
