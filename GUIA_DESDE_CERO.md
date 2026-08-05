@@ -1159,6 +1159,8 @@ Work Zone Standard Edition no acepta el trust SAML por defecto del trial — nec
 1. Cockpit → **Service Marketplace** → buscar **Cloud Identity Services** → **Create/Subscribe** (plan `default`).
 2. Esperar a que el tenant IAS se provisione.
 
+>NOTA: Puede tardar hasta un día en que aparezca el Identity Provider en el wizzard de establish trust
+
 ### Suscribirse a Work Zone
 
 1. Cockpit → **Service Marketplace** → buscar **SAP Build Work Zone, Standard Edition** → **Create/Subscribe** (plan `standard` o `free`, según disponibilidad en tu trial).

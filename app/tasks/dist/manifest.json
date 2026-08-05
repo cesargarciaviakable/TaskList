@@ -129,6 +129,7 @@
 					"options": {
 						"settings": {
 							"contextPath": "/Tasks",
+							"initialLoad": "Enabled",
 							"variantManagement": "Page",
 							"navigation": {
 								"Tasks": {

@@ -136,6 +136,7 @@
 					"options": {
 						"settings": {
 							"contextPath": "/ApprovalRequests",
+							"initialLoad": "Enabled",
 							"variantManagement": "Page",
 							"navigation": {
 								"ApprovalRequests": {
